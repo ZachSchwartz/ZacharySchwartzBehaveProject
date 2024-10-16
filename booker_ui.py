@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from urllib.parse import urlencode
+import json
 import requests
 
 WELCOME_STRING = """Please enter one of the options
@@ -17,10 +18,13 @@ CREATE_REQUEST = "Please enter the {} "
 BOOKING_ID_REQUEST = "Please enter a booking id "
 BOOKING_ID_NAME_REQUEST = "Please enter the {} if you'd like to filter by that kind of name, enter nothing to skip "
 BOOKING_ID_DATE_REQUEST = "Please enter the {} date (YYYY-MM-DD) to filter by that date, enter nothing to skip "
-UPDATE_REQUEST = "Please enter the {} to replace {}, enter nothing to keep original value "
+UPDATE_REQUEST = (
+    "Please enter the {} to replace {}, enter nothing to keep original value "
+)
 CONTENT_HEADER = {"Content-Type": "application/json"}
 ACCEPT_HEADER = {"Accept": "application/json"}
 COMBINED_HEADER = {**CONTENT_HEADER, **ACCEPT_HEADER}
+INVALID_ID = "Invalid ID entered"
 
 ATTRIBUTES = {
     "firstname": "first name",
@@ -37,7 +41,11 @@ def create_token():
     """Creates a new auth token to use for access to the UPDATE and DELETE booking"""
     token_url = "https://restful-booker.herokuapp.com/auth"
     data = {"username": "admin", "password": "password123"}
-    return requests.post(token_url, json=data, headers=CONTENT_HEADER, timeout=10).json().get("token")
+    return (
+        requests.post(token_url, json=data, headers=CONTENT_HEADER, timeout=10)
+        .json()
+        .get("token")
+    )
 
 
 def create_booking(booking: dict):
@@ -101,6 +109,11 @@ def validate_price(input_string):
         return False
 
 
+def handle_response(response):
+    if response.status_code == 405:
+        response.raise_for_status()
+
+
 def handle_create_booking():
     """Handles the user side of creating a booking entry"""
     booking = {"bookingdates": {}}
@@ -132,13 +145,19 @@ def handle_get_ids():
 def handle_read_booking():
     """Handles the user side of reading a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    print(read_booking(id_input).json())
+    try:
+        print(handle_response(read_booking(id_input)).json())
+    except requests.exceptions.RequestException:
+        print(INVALID_ID)
 
 
 def handle_update(token):
     """Handles the user side of updating a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    booking = read_booking(id_input).json()
+    try:
+        booking = read_booking(id_input).json()
+    except requests.exceptions.RequestException:
+        print(INVALID_ID)
     print(booking)
     for attribute, message in ATTRIBUTES.items():
         if "date" in message:
@@ -151,18 +170,21 @@ def handle_update(token):
         if "totalprice" == attribute:
             booking[attribute] = get_input(
                 UPDATE_REQUEST.format(message, attribute), validate_price, attribute
-            )          
+            )
         else:
             booking[attribute] = get_input(
                 UPDATE_REQUEST.format(message, attribute), old_value=attribute
             )
-    print(update_booking(id_input, token, booking).json())
+    print(handle_response(update_booking(id_input, token, booking)).json())
 
 
 def handle_delete(token):
     """Handles the user side of deleting a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    print(delete_booking(id_input, token))
+    try:
+        print(handle_response(delete_booking(id_input, token)))
+    except requests.exceptions.RequestException:
+        print(INVALID_ID)
 
 
 def user_interface():
