@@ -10,6 +10,12 @@ Clone the repository:
 git clone https://github.com/yourusername/ZachSchwartzBehaveProject.git
 cd ZachSchwartzBehaveProject
 ```
+Create a virtual enironment, and install required dependencies:
+```
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
 
 Install the required dependencies:
 ```
