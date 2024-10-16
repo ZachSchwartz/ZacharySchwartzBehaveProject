@@ -13,7 +13,8 @@ delete
 exit
 """
 URL = "https://restful-booker.herokuapp.com/booking"
-CREATE_REQUEST = "Please enter the {}"
+CREATE_REQUEST = "Please enter the {} "
+BOOKING_ID_REQUEST = "Please enter a booking id "
 BOOKING_ID_NAME_REQUEST = "Please enter the {} if you'd like to filter by that kind of name, enter nothing to skip "
 BOOKING_ID_DATE_REQUEST = "Please enter the {} date (YYYY-MM-DD) to filter by that date, enter nothing to skip "
 UPDATE_REQUEST = "Please enter the {} to replace {}, enter nothing to keep original value "
@@ -22,13 +23,13 @@ ACCEPT_HEADER = {"Accept": "application/json"}
 COMBINED_HEADER = {**CONTENT_HEADER, **ACCEPT_HEADER}
 
 ATTRIBUTES = {
-    "firstname": "first name ",
-    "lastname": "last name ",
-    "totalprice": "total price paid ",
+    "firstname": "first name",
+    "lastname": "last name",
+    "totalprice": "total price paid",
     "depositpaid": "deposit status, type 'true' or anything else for false",
-    "checkin": "checkin date ",
-    "checkout": "checkout date ",
-    "additionalneeds": "additional needs ",
+    "checkin": "checkin date",
+    "checkout": "checkout date",
+    "additionalneeds": "additional needs",
 }
 
 
@@ -36,7 +37,7 @@ def create_token():
     """Creates a new auth token to use for access to the UPDATE and DELETE booking"""
     token_url = "https://restful-booker.herokuapp.com/auth"
     data = {"username": "admin", "password": "password123"}
-    return requests.post(token_url, json=data, headers=CONTENT_HEADER, timeout=10)
+    return requests.post(token_url, json=data, headers=CONTENT_HEADER, timeout=10).json().get("token")
 
 
 def create_booking(booking: dict):
@@ -122,45 +123,46 @@ def handle_get_ids():
     booking = {}
     for attribute in ATTRIBUTES:
         if "name" in attribute:
-            booking[attribute] = get_input(BOOKING_ID_NAME_REQUEST.format(attribute))
-        elif "date" in attribute:
-            booking[attribute] = get_input(
-                BOOKING_ID_DATE_REQUEST.format(attribute), validate_date
-            )
+            booking[attribute] = input(BOOKING_ID_NAME_REQUEST.format(attribute))
+        elif "checkout" in attribute:
+            booking[attribute] = input(BOOKING_ID_DATE_REQUEST.format(attribute))
     print(get_bookings(booking).json())
 
 
 def handle_read_booking():
     """Handles the user side of reading a booking"""
-    id_input = input("Please enter a booking id to read ")
+    id_input = input(BOOKING_ID_REQUEST)
     print(read_booking(id_input).json())
 
 
 def handle_update(token):
     """Handles the user side of updating a booking"""
-    id_input = input("Please enter a booking id ")
-    booking = read_booking(id_input)
-    booking = {"bookingdates": {}}
+    id_input = input(BOOKING_ID_REQUEST)
+    booking = read_booking(id_input).json()
+    print(booking)
     for attribute, message in ATTRIBUTES.items():
+        if "date" in message:
+            attribute = booking["bookingdates"][attribute]
+            booking["bookingdates"][attribute] = get_input(
+                UPDATE_REQUEST.format(message, attribute), validate_date, attribute
+            )
+            continue
+        attribute = booking[attribute]
         if "totalprice" == attribute:
             booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, booking.get(attribute)), validate_price
-            )
-        elif "date" in message:
-            booking["bookingdates"][attribute] = get_input(
-                UPDATE_REQUEST.format(message, booking.get(attribute)), validate_date
-            )
+                UPDATE_REQUEST.format(message, attribute), validate_price, attribute
+            )          
         else:
             booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, booking.get(attribute))
+                UPDATE_REQUEST.format(message, attribute), old_value=attribute
             )
     print(update_booking(id_input, token, booking).json())
 
 
 def handle_delete(token):
     """Handles the user side of deleting a booking"""
-    id_input = input("Please enter a booking id to delete ")
-    print(delete_booking(id_input, token).json())
+    id_input = input(BOOKING_ID_REQUEST)
+    print(delete_booking(id_input, token))
 
 
 def user_interface():
