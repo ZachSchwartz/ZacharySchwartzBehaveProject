@@ -8,7 +8,7 @@ To set up the project, follow these steps:
 Clone the repository:
 ```
 git clone https://github.com/yourusername/ZachSchwartzBehaveProject.git
-cd ZachSchwartzBehaveProject
+cd ZacharySchwartzBehaveProject
 ```
 Create a virtual enironment, and install required dependencies:
 ```
@@ -64,7 +64,7 @@ python -m behave
 ```
 ## Project Structure
 ```
-│ZachSchwartzBehaveProject/
+│ZacharySchwartzBehaveProject/
 ├── booker_ui.py          # Main program file
 ├── features/             # Behave test features
 │   ├── steps/            # Step definitions for Behave tests
