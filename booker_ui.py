@@ -1,7 +1,7 @@
 """"The goal of this project is to allow the user to easily interface with the restful-booker api"""
 
 from datetime import datetime
-from URLlib.parse import URLencode
+from urllib.parse import urlencode
 import requests
 
 WELCOME_STRING = """Please enter one of the options
@@ -66,7 +66,7 @@ def delete_booking(booking_id, token):
 def get_bookings(booking: dict):
     """Gets a list of all booking ids, can be filtered based on names and checkin/out times"""
     booking_filtered = {k: v for k, v in booking.items() if v}
-    query_string = URLencode(booking_filtered)
+    query_string = urlencode(booking_filtered)
     return requests.get(f"{URL}?{query_string}" if query_string else URL, timeout=10)
 
 
@@ -102,14 +102,14 @@ def validate_price(input_string):
 
 def handle_create_booking():
     """Handles the user side of creating a booking entry"""
-    booking = {}
+    booking = {"bookingdates": {}}
     for attribute, message in ATTRIBUTES.items():
-        if "total price paid " == attribute:
+        if "totalprice" == attribute:
             booking[attribute] = get_input(
                 CREATE_REQUEST.format(message), validate_price
             )
         elif "date" in message:
-            booking[attribute] = get_input(
+            booking["bookingdates"][attribute] = get_input(
                 CREATE_REQUEST.format(message), validate_date
             )
         else:
@@ -133,21 +133,21 @@ def handle_get_ids():
 def handle_read_booking():
     """Handles the user side of reading a booking"""
     id_input = input("Please enter a booking id to read ")
-    read_booking(id_input)
+    print(read_booking(id_input).json())
 
 
 def handle_update(token):
     """Handles the user side of updating a booking"""
     id_input = input("Please enter a booking id ")
     booking = read_booking(id_input)
-    booking = {}
+    booking = {"bookingdates": {}}
     for attribute, message in ATTRIBUTES.items():
-        if "total price paid " == attribute:
+        if "totalprice" == attribute:
             booking[attribute] = get_input(
                 UPDATE_REQUEST.format(message, booking.get(attribute)), validate_price
             )
         elif "date" in message:
-            booking[attribute] = get_input(
+            booking["bookingdates"][attribute] = get_input(
                 UPDATE_REQUEST.format(message, booking.get(attribute)), validate_date
             )
         else:
@@ -160,7 +160,7 @@ def handle_update(token):
 def handle_delete(token):
     """Handles the user side of deleting a booking"""
     id_input = input("Please enter a booking id to delete ")
-    delete_booking(id_input, token)
+    print(delete_booking(id_input, token).json())
 
 
 def user_interface():
