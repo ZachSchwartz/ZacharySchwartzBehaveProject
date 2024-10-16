@@ -57,8 +57,8 @@ To run the Behave tests:
 python -m behave
 ```
 ## Project Structure
-```ZachSchwartzBehaveProject/
-│
+```
+│ZachSchwartzBehaveProject/
 ├── booker_ui.py          # Main program file
 ├── features/             # Behave test features
 │   ├── steps/            # Step definitions for Behave tests
