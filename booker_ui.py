@@ -1,7 +1,7 @@
 """"The goal of this project is to allow the user to easily interface with the restful-booker api"""
 
-from URLlib.parse import URLencode
 from datetime import datetime
+from URLlib.parse import URLencode
 import requests
 
 WELCOME_STRING = """Please enter one of the options
@@ -14,9 +14,12 @@ exit
 """
 URL = "https://restful-booker.herokuapp.com/booking"
 CREATE_REQUEST = "Please enter the {}"
-BOOKING_ID_NAME_REQUEST = "Enter {} if you'd like to filter by that kind of name, enter nothing to skip "
-BOOKING_ID_DATE_REQUEST = "Enter {} date (YYYY-MM-DD) to filter by that date, enter nothing to skip "
-UPDATE_REQUEST = "Please enter the {} if you'd like to replace {}, enter nothing to keep original value "
+BOOKING_ID_NAME_REQUEST = "Please enter the {} if you'd like to filter by that kind of name, enter nothing to skip "
+BOOKING_ID_DATE_REQUEST = "Please enter the {} date (YYYY-MM-DD) to filter by that date, enter nothing to skip "
+UPDATE_REQUEST = "Please enter the {} to replace {}, enter nothing to keep original value "
+CONTENT_HEADER = {"Content-Type": "application/json"}
+ACCEPT_HEADER = {"Accept": "application/json"}
+COMBINED_HEADER = {**CONTENT_HEADER, **ACCEPT_HEADER}
 
 ATTRIBUTES = {
     "firstname": "first name ",
@@ -32,54 +35,38 @@ ATTRIBUTES = {
 def create_token():
     """Creates a new auth token to use for access to the UPDATE and DELETE booking"""
     token_url = "https://restful-booker.herokuapp.com/auth"
-    headers = {"Content-Type": "application/json"}
     data = {"username": "admin", "password": "password123"}
-    return requests.post(token_url, json=data, headers=headers, timeout=10)
+    return requests.post(token_url, json=data, headers=CONTENT_HEADER, timeout=10)
 
 
 def create_booking(booking: dict):
     """Creates new booking"""
-    headers = {"Content-Type": "application/json", "Accept": "application/json"}
-    return requests.post(URL, json=booking, headers=headers, timeout=10)
+    return requests.post(URL, json=booking, headers=COMBINED_HEADER, timeout=10)
 
 
 def read_booking(booking_id):
     """Reads the contents of a pre-existing booking"""
-    headers = {"Accept": "application/json"}
-    return requests.get(URL + f"/{str(booking_id)}", headers=headers, timeout=10)
+    return requests.get(URL + f"/{str(booking_id)}", headers=ACCEPT_HEADER, timeout=10)
 
 
 def update_booking(booking_id, token, booking: dict):
     """Updates a pre-existing booking with a new booking"""
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Cookie": f"token={token}",
-    }
+    header = {**COMBINED_HEADER, "Cookie": f"token={token}"}
     return requests.put(
-        URL + f"/{str(booking_id)}", json=booking, headers=headers, timeout=10
+        URL + f"/{str(booking_id)}", json=booking, headers=header, timeout=10
     )
 
 
 def delete_booking(booking_id, token):
     """Deletes a booking"""
-    headers = {"Content-Type": "application/json", "Cookie": f"token={token}"}
-    return requests.delete(URL + f"/{str(booking_id)}", headers=headers, timeout=10)
+    header = {**CONTENT_HEADER, "Cookie": f"token={token}"}
+    return requests.delete(URL + f"/{str(booking_id)}", headers=header, timeout=10)
 
 
-def get_bookings(firstname=None, lastname=None, checkin=None, checkout=None):
+def get_bookings(booking: dict):
     """Gets a list of all booking ids, can be filtered based on names and checkin/out times"""
-    params = {}
-    if firstname:
-        params["firstname"] = firstname
-    if lastname:
-        params["lastname"] = lastname
-    if checkin:
-        params["checkin"] = checkin
-    if checkout:
-        params["checkout"] = checkout
-
-    query_string = URLencode(params)
+    booking_filtered = {k: v for k, v in booking.items() if v}
+    query_string = URLencode(booking_filtered)
     return requests.get(f"{URL}?{query_string}" if query_string else URL, timeout=10)
 
 
@@ -116,13 +103,15 @@ def validate_price(input_string):
 def handle_create_booking():
     """Handles the user side of creating a booking entry"""
     booking = {}
-    for attribute, message in ATTRIBUTES:
+    for attribute, message in ATTRIBUTES.items():
         if "total price paid " == attribute:
             booking[attribute] = get_input(
                 CREATE_REQUEST.format(message), validate_price
             )
         elif "date" in message:
-            booking[attribute] = get_input(CREATE_REQUEST.format(message), validate_date)
+            booking[attribute] = get_input(
+                CREATE_REQUEST.format(message), validate_date
+            )
         else:
             booking[attribute] = get_input(CREATE_REQUEST.format(message))
     print(create_booking(booking).json())
@@ -133,34 +122,12 @@ def handle_get_ids():
     booking = {}
     for attribute in ATTRIBUTES:
         if "name" in attribute:
-            booking[attribute] = get_input(
-                BOOKING_ID_NAME_REQUEST.format(attribute)
-            )
+            booking[attribute] = get_input(BOOKING_ID_NAME_REQUEST.format(attribute))
         elif "date" in attribute:
-            booking[attribute] = get_input(BOOKING_ID_DATE_REQUEST.format(attribute), validate_date)
-            
-
-    firstname = (
-        input(
-            "Enter firstname if you'd like to filter by firstname, enter nothing to skip "
-        )
-        or None
-    )
-    lastname = (
-        input(
-            "Enter lastname if you'd like to filter by lastname, enter nothing to skip "
-        )
-        or None
-    )
-    checkin = (
-        input("Enter check-in date (YYYY-MM-DD) to search, enter nothing to skip ")
-        or None
-    )
-    checkout = (
-        input("Enter check-out date (YYYY-MM-DD) to search, enter nothing to skip ")
-        or None
-    )
-    print(get_bookings(firstname, lastname, checkin, checkout).json())
+            booking[attribute] = get_input(
+                BOOKING_ID_DATE_REQUEST.format(attribute), validate_date
+            )
+    print(get_bookings(booking).json())
 
 
 def handle_read_booking():
@@ -174,15 +141,19 @@ def handle_update(token):
     id_input = input("Please enter a booking id ")
     booking = read_booking(id_input)
     booking = {}
-    for attribute, message in ATTRIBUTES:
+    for attribute, message in ATTRIBUTES.items():
         if "total price paid " == attribute:
             booking[attribute] = get_input(
                 UPDATE_REQUEST.format(message, booking.get(attribute)), validate_price
             )
         elif "date" in message:
-            booking[attribute] = get_input(UPDATE_REQUEST.format(message, booking.get(attribute)), validate_date)
+            booking[attribute] = get_input(
+                UPDATE_REQUEST.format(message, booking.get(attribute)), validate_date
+            )
         else:
-            booking[attribute] = get_input(UPDATE_REQUEST.format(message, booking.get(attribute)))
+            booking[attribute] = get_input(
+                UPDATE_REQUEST.format(message, booking.get(attribute))
+            )
     print(update_booking(id_input, token, booking).json())
 
 
