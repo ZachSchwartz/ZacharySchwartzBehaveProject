@@ -70,8 +70,14 @@ python -m behave
 │   ├── steps/            # Step definitions for Behave tests
 │   └── environment.py    # Behave environment setup
 ├── requirements.txt      # Project dependencies
-└── README.md             # This file```
+└── README.md             # This file
+```
 
 ## Bugs
-The get booking ids api supports a checkin time filter, however it doesn't appear to work, so I've removed the ability to access it from the program
-There is a way to create a booking without an additional needs attribute. My program initializes it to when creating a booking. Calling update on an entry not made by this program that lacks the additional needs attribute will crash it. I am intentionally not fixing this since the user should not really be interacting with other peoples bookings anyways.
+The get booking ids api supports a checkin time filter, however it doesn't appear to work, 
+so I've removed the ability to access it from the program.
+
+There is a way to create a booking without an additional needs attribute.
+My program initializes it to when creating a booking. 
+Calling update on an entry not made by this program that lacks the additional needs attribute will crash it. 
+I am intentionally not fixing this since the user should not really be interacting with other peoples bookings anyways.
