@@ -35,6 +35,34 @@ ATTRIBUTES = {
 }
 
 
+def validate_date(input_string):
+    """Validates receiving a proper date from user"""
+    try:
+        datetime.strptime(input_string, "%Y-%m-%d")
+        return True
+    except ValueError:
+        print("Did not receive valid YYYY-MM-DD from user")
+        return False
+
+
+def validate_price(input_string):
+    """Validates receiving a proper number from user"""
+    try:
+        price = int(input_string)
+        return price >= 0
+    except ValueError:
+        print("Did not receive valid number from user")
+        return False
+
+
+VALIDATORS = {
+    "totalprice": validate_price,
+    "depositpaid": None,
+    "checkin": validate_date,
+    "checkout": validate_date,
+}
+
+
 def create_token():
     """Creates a new auth token to use for access to the UPDATE and DELETE booking"""
     token_url = "https://restful-booker.herokuapp.com/auth"
@@ -49,6 +77,13 @@ def create_token():
 def create_booking(booking: dict):
     """Creates new booking"""
     return requests.post(URL, json=booking, headers=COMBINED_HEADER, timeout=10)
+
+
+def get_bookings(booking: dict):
+    """Gets a list of all booking ids, can be filtered based on names and checkin/out times"""
+    booking_filtered = {k: v for k, v in booking.items() if v}
+    query_string = urlencode(booking_filtered)
+    return requests.get(f"{URL}?{query_string}" if query_string else URL, timeout=10)
 
 
 def read_booking(booking_id):
@@ -70,14 +105,7 @@ def delete_booking(booking_id, token):
     return requests.delete(URL + f"/{str(booking_id)}", headers=header, timeout=10)
 
 
-def get_bookings(booking: dict):
-    """Gets a list of all booking ids, can be filtered based on names and checkin/out times"""
-    booking_filtered = {k: v for k, v in booking.items() if v}
-    query_string = urlencode(booking_filtered)
-    return requests.get(f"{URL}?{query_string}" if query_string else URL, timeout=10)
-
-
-def get_input(prompt, validator=None, old_value=""):
+def get_input(prompt, validator=None, old_value=None):
     """Handles getting input from the user for more complex inputs"""
     while True:
         user_input = input(prompt)
@@ -87,24 +115,40 @@ def get_input(prompt, validator=None, old_value=""):
             return user_input
 
 
-def validate_date(input_string):
-    """Validates receiving a proper date from user"""
-    try:
-        datetime.strptime(input_string, "%Y-%m-%d")
-        return True
-    except ValueError:
-        print("Did not receive valid YYYY-MM-DD from user")
-        return False
+def update_attribute(message, validator, old_value=None):
+    """Helper function to update a booking attribute"""
+    if old_value:
+        new_value = get_input(
+            UPDATE_REQUEST.format(message, old_value),
+            validator,
+            old_value,
+        )
+    else:
+        new_value = get_input(
+            CREATE_REQUEST.format(message),
+            validator,
+        )
+
+    if "deposit" in message:
+        return str(new_value).lower() == "true"
+
+    return new_value
 
 
-def validate_price(input_string):
-    """Validates receiving a proper number from user"""
-    try:
-        price = int(input_string)
-        return price >= 0
-    except ValueError:
-        print("Did not receive valid number from user")
-        return False
+def update_booking_attributes(booking):
+    """Updates a booking based on user input"""
+    for attribute, message in ATTRIBUTES.items():
+        validator = VALIDATORS.get(attribute, None)
+        if "date" in message:
+            booking["bookingdates"][attribute] = update_attribute(
+                message, validator, booking["bookingdates"][attribute]
+            )
+            continue
+
+        old_value = booking.get(attribute)
+        booking[attribute] = update_attribute(message, validator, old_value)
+
+    return booking
 
 
 def handle_response(response):
@@ -122,20 +166,13 @@ def handle_create_booking():
     """Handles the user side of creating a booking entry"""
     booking = {"bookingdates": {}}
     for attribute, message in ATTRIBUTES.items():
-        if "totalprice" == attribute:
-            booking[attribute] = get_input(
-                CREATE_REQUEST.format(message), validate_price
-            )
-        elif "date" in message:
-            booking["bookingdates"][attribute] = get_input(
-                CREATE_REQUEST.format(message), validate_date
-            )
-        elif "depositpaid" == attribute:
-            booking[attribute] = (
-                get_input(CREATE_REQUEST.format(message)).lower() == "true"
-            )
-        else:
-            booking[attribute] = get_input(CREATE_REQUEST.format(message))
+        validator = VALIDATORS.get(attribute, None)
+        if "date" in message:
+            booking["bookingdates"][attribute] = update_attribute(message, validator)
+            continue
+
+        booking[attribute] = update_attribute(message, validator)
+
     print("Booking Created: ")
     print(create_booking(booking).json())
 
@@ -148,6 +185,7 @@ def handle_get_ids():
             booking[attribute] = input(BOOKING_ID_NAME_REQUEST.format(attribute))
         elif "checkout" in attribute:
             booking[attribute] = input(BOOKING_ID_DATE_REQUEST.format(attribute))
+
     print("Here are the requested booking(s): ")
     print(get_bookings(booking).json())
 
@@ -157,49 +195,21 @@ def handle_read_booking():
     id_input = input(BOOKING_ID_REQUEST)
     request = handle_response(read_booking(id_input))
     if request:
+        print("Here is the requested booking: ")
         print(request.json())
 
 
 def handle_update(token):
     """Handles the user side of updating a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    booking = handle_response(read_booking(id_input))
-    if booking is None:
+    booking_response = handle_response(read_booking(id_input))
+    if booking_response is None:
         return None
-    booking = booking.json()
-    print(booking)
-    for attribute, message in ATTRIBUTES.items():
-        if "date" in message:
-            old_attribute = booking["bookingdates"][attribute]
-            booking["bookingdates"][attribute] = get_input(
-                UPDATE_REQUEST.format(message, old_attribute),
-                validate_date,
-                old_attribute,
-            )
-            continue
-        old_attribute = booking[attribute]
 
-        if "totalprice" == attribute:
-            booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, old_attribute),
-                validate_price,
-                old_attribute,
-            )
-        elif "depositpaid" == attribute:
-            booking[attribute] = (
-                str(
-                    get_input(
-                        UPDATE_REQUEST.format(message, old_attribute),
-                        old_value=old_attribute,
-                    )
-                ).lower()
-                == "true"
-            )
-        else:
-            booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, old_attribute), old_value=old_attribute
-            )
-    print(update_booking(id_input, token, booking).json())
+    old_booking = booking_response.json()
+    print(old_booking)
+    new_booking = update_booking_attributes(old_booking)
+    print(update_booking(id_input, token, new_booking).json())
 
 
 def handle_delete(token):
