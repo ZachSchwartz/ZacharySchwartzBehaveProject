@@ -17,11 +17,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Install the required dependencies:
-```
-pip install behave requests
-```
-
 ## Features
 
 1. Create a new booking
