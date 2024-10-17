@@ -9,8 +9,8 @@ Feature: Creating a booking
     And the user enters "2020-02-02"
     And the user enters "Nothing"
     When the user is finished inputting data
-    Then the output should not contain "Did not receive valid, positive whole number from user"
-    Then the output should not contain "Did not receive valid date from user"
+    Then the output should not contain "Did not receive valid number from user"
+    Then the output should not contain "Did not receive valid YYYY-MM-DD from user"
     Then the output should contain "Booking Created: "
     Then the output should contain the created booking
 
@@ -26,7 +26,7 @@ Feature: Creating a booking
     And the user enters "2020-02-02"
     And the user enters "Nothing"
     When the user is finished inputting data
-    Then the output should contain "Did not receive valid, positive whole number from user"
-    Then the output should contain "Did not receive valid date from user"
+    Then the output should contain "Did not receive valid number from user"
+    Then the output should contain "Did not receive valid YYYY-MM-DD from user"
     Then the output should contain "Booking Created: "
     Then the output should contain the created booking

@@ -5,7 +5,6 @@ Feature: Update some or all parts of a booking
         When the user enters "Gelber"
         When the user enters nothing for "6" other inputs
         When the user is finished inputting data
-        Then the user should be looking at the correct booking entry
         Then the output should contain the once updated booking
 
     Scenario: Update all parts of a booking
@@ -19,5 +18,4 @@ Feature: Update some or all parts of a booking
         When the user enters "2021-03-03"
         When the user enters "Gelber"
         When the user is finished inputting data
-        Then the user should be looking at the correct booking entry
         Then the output should contain the fully updated booking

@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from urllib.parse import urlencode
-import json
 import requests
 
 WELCOME_STRING = """Please enter one of the options
@@ -24,7 +23,7 @@ UPDATE_REQUEST = (
 CONTENT_HEADER = {"Content-Type": "application/json"}
 ACCEPT_HEADER = {"Accept": "application/json"}
 COMBINED_HEADER = {**CONTENT_HEADER, **ACCEPT_HEADER}
-INVALID_ID = "Invalid ID entered"
+INVALID_ID = "Booking id does not exist"
 
 ATTRIBUTES = {
     "firstname": "first name",
@@ -79,7 +78,7 @@ def get_bookings(booking: dict):
     return requests.get(f"{URL}?{query_string}" if query_string else URL, timeout=10)
 
 
-def get_input(prompt, validator=None, old_value=None):
+def get_input(prompt, validator=None, old_value=""):
     """Handles getting input from the user for more complex inputs"""
     while True:
         user_input = input(prompt)
@@ -95,7 +94,7 @@ def validate_date(input_string):
         datetime.strptime(input_string, "%Y-%m-%d")
         return True
     except ValueError:
-        print("Did not receive valid date from user")
+        print("Did not receive valid YYYY-MM-DD from user")
         return False
 
 
@@ -105,13 +104,19 @@ def validate_price(input_string):
         price = int(input_string)
         return price >= 0
     except ValueError:
-        print("Did not receive valid, positive whole number from user")
+        print("Did not receive valid number from user")
         return False
 
 
 def handle_response(response):
-    if response.status_code == 405:
-        response.raise_for_status()
+    """Catch errors for responses that involve a booking id"""
+    try:
+        if response.status_code in {404, 405}:
+            response.raise_for_status()
+        return response
+    except requests.exceptions.HTTPError:
+        print(INVALID_ID)
+        return None
 
 
 def handle_create_booking():
@@ -126,8 +131,13 @@ def handle_create_booking():
             booking["bookingdates"][attribute] = get_input(
                 CREATE_REQUEST.format(message), validate_date
             )
+        elif "depositpaid" == attribute:
+            booking[attribute] = (
+                get_input(CREATE_REQUEST.format(message)).lower() == "true"
+            )
         else:
             booking[attribute] = get_input(CREATE_REQUEST.format(message))
+    print("Booking Created: ")
     print(create_booking(booking).json())
 
 
@@ -139,52 +149,65 @@ def handle_get_ids():
             booking[attribute] = input(BOOKING_ID_NAME_REQUEST.format(attribute))
         elif "checkout" in attribute:
             booking[attribute] = input(BOOKING_ID_DATE_REQUEST.format(attribute))
+    print("Here are the requested booking(s): ")
     print(get_bookings(booking).json())
 
 
 def handle_read_booking():
     """Handles the user side of reading a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    try:
-        print(handle_response(read_booking(id_input)).json())
-    except requests.exceptions.RequestException:
-        print(INVALID_ID)
+    request = handle_response(read_booking(id_input))
+    if request:
+        print(request.json())
 
 
 def handle_update(token):
     """Handles the user side of updating a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    try:
-        booking = read_booking(id_input).json()
-    except requests.exceptions.RequestException:
-        print(INVALID_ID)
+    booking = handle_response(read_booking(id_input))
+    if booking is None:
+        return None
+    booking = booking.json()
     print(booking)
     for attribute, message in ATTRIBUTES.items():
         if "date" in message:
-            attribute = booking["bookingdates"][attribute]
+            old_attribute = booking["bookingdates"][attribute]
             booking["bookingdates"][attribute] = get_input(
-                UPDATE_REQUEST.format(message, attribute), validate_date, attribute
+                UPDATE_REQUEST.format(message, old_attribute),
+                validate_date,
+                old_attribute,
             )
             continue
-        attribute = booking[attribute]
+        old_attribute = booking[attribute]
+
         if "totalprice" == attribute:
             booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, attribute), validate_price, attribute
+                UPDATE_REQUEST.format(message, old_attribute),
+                validate_price,
+                old_attribute,
+            )
+        elif "depositpaid" == attribute:
+            booking[attribute] = (
+                str(
+                    get_input(
+                        UPDATE_REQUEST.format(message, old_attribute),
+                        old_value=old_attribute,
+                    )
+                ).lower() == "true"
             )
         else:
             booking[attribute] = get_input(
-                UPDATE_REQUEST.format(message, attribute), old_value=attribute
+                UPDATE_REQUEST.format(message, old_attribute), old_value=old_attribute
             )
-    print(handle_response(update_booking(id_input, token, booking)).json())
+    print(update_booking(id_input, token, booking).json())
 
 
 def handle_delete(token):
     """Handles the user side of deleting a booking"""
     id_input = input(BOOKING_ID_REQUEST)
-    try:
-        print(handle_response(delete_booking(id_input, token)))
-    except requests.exceptions.RequestException:
-        print(INVALID_ID)
+    request = handle_response(delete_booking(id_input, token))
+    if request:
+        print("Booking deleted")
 
 
 def user_interface():
@@ -209,4 +232,5 @@ def user_interface():
             print("I didn't understand that command, please try again\n")
 
 
-user_interface()
+if __name__ == "__main__":
+    user_interface()

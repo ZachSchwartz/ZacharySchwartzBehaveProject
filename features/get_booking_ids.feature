@@ -39,7 +39,7 @@ Scenario: User queries a specific booking with a first name
     When the user enters "get ids"
     And the user enters "Zach"
     And the user enters "Schwartz"
-    And the user enters "2020-01-01"
+    And the user enters "2020-02-02"
     When the user is finished inputting data
     Then the output should contain "Here are the requested booking(s):"
     Then the user should be looking at the correct booking entry
