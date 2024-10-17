@@ -24,7 +24,6 @@ CONTENT_HEADER = {"Content-Type": "application/json"}
 ACCEPT_HEADER = {"Accept": "application/json"}
 COMBINED_HEADER = {**CONTENT_HEADER, **ACCEPT_HEADER}
 INVALID_ID = "Booking id does not exist"
-
 ATTRIBUTES = {
     "firstname": "first name",
     "lastname": "last name",
@@ -193,7 +192,8 @@ def handle_update(token):
                         UPDATE_REQUEST.format(message, old_attribute),
                         old_value=old_attribute,
                     )
-                ).lower() == "true"
+                ).lower()
+                == "true"
             )
         else:
             booking[attribute] = get_input(

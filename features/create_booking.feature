@@ -1,5 +1,5 @@
 Feature: Creating a booking
-  Scenario: User creates a booking
+  Scenario: Create a booking
     When the user enters "create"
     And the user enters "Zach"
     And the user enters "Schwartz"
@@ -14,7 +14,7 @@ Feature: Creating a booking
     Then the output should contain "Booking Created: "
     Then the output should contain the created booking
 
-  Scenario: User tries to create invalid booking
+  Scenario: Create booking with certain invalid parameters
     When the user enters "create"
     And the user enters "Zach"
     And the user enters "Schwartz"

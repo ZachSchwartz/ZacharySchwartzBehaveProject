@@ -6,6 +6,7 @@ Feature: Update some or all parts of a booking
         When the user enters nothing for "6" other inputs
         When the user is finished inputting data
         Then the output should contain the once updated booking
+        Then the output should not contain "Booking id does not exist"
 
     Scenario: Update all parts of a booking
         Given the user creates a booking under my name
@@ -19,3 +20,10 @@ Feature: Update some or all parts of a booking
         When the user enters "Gelber"
         When the user is finished inputting data
         Then the output should contain the fully updated booking
+        Then the output should not contain "Booking id does not exist"
+
+    Scenario: Update a fake booking
+        When the user enters "update"
+        And the user enters "0"
+        When the user is finished inputting data
+        Then the output should contain "Booking id does not exist"
